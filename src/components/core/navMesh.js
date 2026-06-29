@@ -21,8 +21,8 @@ export class NavMesh {
         return new BABYLON.TransformNode('navMeshGroup', scene)
     }
 
-    rebuildNavMesh = (scene, navMeshGroupRef) => {
-        clearNavMesh();
+    rebuildNavMesh = (scene, navMeshGroupRef, stateRef) => {
+        this.clearNavMesh(navMeshGroupRef);
     
         if (!navMeshGroupRef.current) return;
     
