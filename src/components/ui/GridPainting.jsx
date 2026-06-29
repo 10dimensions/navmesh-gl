@@ -1,5 +1,5 @@
 
-export default function GridPainting(editMode, setEditMode, setOrbitControls, clearCubes, setStep){
+export default function GridPainting({editMode, setEditMode, setOrbitControls, clearCubes, setStep, DEMO_LAYOUTS, loadDemo}){
 
     return(
         <div className="space-y-5">
@@ -55,6 +55,23 @@ export default function GridPainting(editMode, setEditMode, setOrbitControls, cl
             <div className="p-3.5 bg-slate-50 rounded-md border border-slate-200/50 text-[11px] text-slate-500 leading-relaxed">
                 <span className="font-semibold text-slate-850 block mb-1">Painting &amp; Dragging Guide</span>
                 Select <span className="font-semibold">Interactive Mode</span> in the top header. In <span className="font-semibold">Add</span> mode, click grid tiles to build obstacles. In <span className="font-semibold">Erase</span> mode, click to delete. In <span className="font-semibold">Drag</span> mode, click and hold to drag obstacle blocks smoothly around!
+            </div>
+
+            {/* Preset Demoland Layouts */}
+            <div className="space-y-2 pt-1">
+                <h4 className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Scene Presets</h4>
+                <div className="grid grid-cols-1 gap-1.5">
+                {DEMO_LAYOUTS.map((demo, idx) => (
+                    <button
+                    key={idx}
+                    onClick={() => loadDemo(idx)}
+                    className="flex items-center justify-between py-2 px-3 rounded-md border border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 text-left text-xs transition-all"
+                    >
+                    <span className="font-medium text-slate-700">{demo.name}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Load</span>
+                    </button>
+                ))}
+                </div>
             </div>
 
             {/* Clear utility */}
