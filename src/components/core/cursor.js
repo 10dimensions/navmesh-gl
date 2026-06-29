@@ -9,7 +9,7 @@ export class PointerEvents {
         this.stateRef = stateRef
         this.cubeMeshesRef = cubeMeshesRef
         this.setCubes = setCubes
-        this.SetNotification = setNotification
+        this.setNotification = setNotification
         this.cameraRef = cameraRef
         this.canvasRef = canvasRef
         this.agentMeshRef = agentMeshRef
@@ -266,9 +266,9 @@ export class PointerEvents {
         }
     }
 
-    setupPointerObserver() {
-        console.log("lot of time")
-        this.pointerObserverRef.current = this.scene.onPointerObservable?.add((pointerInfo) => {
+    setupPointerObserver(scene) {
+        this.scene = scene
+        this.pointerObserverRef.current = this.scene.onPointerObservable.add((pointerInfo) => {
             // 1. POINTERDOWN Event
             if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
                 this.onPointerDown(pointerInfo)
