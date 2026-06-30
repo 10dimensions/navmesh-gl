@@ -1,16 +1,72 @@
-# React + Vite
+# NavMesh GL
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A small React + Vite proof-of-concept for interactive navmesh simulation and A* pathfinding over a 2D obstacle grid.
 
-Currently, two official plugins are available:
+## Framework / approach used
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- UI: React with Vite.
+- 3D rendering: Babylon.js.
+- NavMesh visualization: Babylon.js meshes and Babylon.CSG to carve walkable space from a base ground plane.
+- Pathfinding: custom A* over a dense grid of world-space samples, with line-of-sight smoothing.
 
-## React Compiler
+## NavMesh generation strategy
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The current implementation does not build a traditional polygonal navigation mesh from scratch. Instead, it:
 
-## Expanding the Oxlint configuration
+1. Creates a full 11×11 base plate representing the walkable floor.
+2. Inflates each obstacle by the agent radius (`walkableRadius`).
+3. Uses Babylon.js CSG subtraction to remove the inflated obstacle volumes from the base plate.
+4. Renders the resulting remaining region as a transparent walkable surface.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+This produces a visual walkable area that reflects obstacle clearance, but it is not an explicit convex polygon mesh.
+
+## NavMesh polygon merging strategy
+
+There is no explicit polygon merging step in the current codebase.
+
+- The navmesh is generated as a single CSG-derived mesh, not as a set of merged convex polygons.
+- The system does not group adjacent cells into convex polygons or produce a polygon mesh graph.
+
+If polygon merging were added later, the expected strategy would be:
+
+- identify adjacent walkable cells in the underlying grid,
+- merge contiguous cells into larger convex regions where possible,
+- keep region boundaries aligned with obstacle edges and grid axes.
+
+## Portal edge computation
+
+The current implementation does not compute portal edges between adjacent navmesh polygons.
+
+- There is no explicit portal graph or shared-edge detection step.
+- Pathfinding is handled by sampling grid points and checking walkability directly.
+
+A full portal computation would normally involve:
+
+- enumerating adjacent polygon faces,
+- finding shared boundary edges between pairs of convex polygons,
+- storing those shared edges as portals for corridor-based path smoothing.
+
+## Known issues / incomplete areas
+
+- `NavMesh` is currently a visual CSG representation only. Pathfinding does not use a true navmesh data structure.
+- There is no explicit convex polygon generation or portal graph creation in the current code.
+- The pathfinder uses a dense grid search, which is simpler but less efficient than a true navmesh-based search.
+- Diagonal movement is bounded by corner-cut prevention, but the grid resolution and sampling may still produce suboptimal turns.
+- The demo is limited to a fixed 11×11 area and axis-aligned unit obstacles.
+- Obstacle motion and dynamic navmesh updates are supported visually, but runtime navigation data remains approximate.
+
+## Running the app
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Start the dev server:
+
+```bash
+npm run dev
+```
+
+3. Open the app in the browser and use the grid painting controls to place obstacles, compute the navmesh, and simulate the agent path.
