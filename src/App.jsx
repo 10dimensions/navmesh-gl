@@ -5,11 +5,24 @@ import heroImg from './assets/hero.png'
 import './App.css'
 import NavMeshSimulator from './components/NavMeshSimulator'
 
+function Landing({setStart}) {
+  return (
+    <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
+      <button className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-md hover:bg-blue-700 transition duration-200"
+        onClick={()=>setStart(true)}>
+        Start
+      </button>
+    </div>
+  );
+}
+
 function App() {
+
+  const [start, setStart] = useState(false)
 
   return (
     <>
-      <NavMeshSimulator />
+    { !start ? <Landing setStart={setStart} /> : <NavMeshSimulator /> }
     </>
   )
 }

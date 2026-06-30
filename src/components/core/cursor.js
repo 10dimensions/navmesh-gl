@@ -179,7 +179,7 @@ export class PointerEvents {
             const draggedCubeId = this.dragRef.current.draggedCubeId;
 
             // Raycast to find intersection point strictly on ground
-            const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => mesh.name === 'ground1');
+            const pickResult = scene.pick(scene.pointerX, scene.pointerY, (mesh) => mesh.name === 'ground1');
             if (pickResult && pickResult.hit && pickResult.pickedPoint) {
                 const pt = pickResult.pickedPoint;
                 const exactX = Math.max(-5, Math.min(5, pt.x));
@@ -267,8 +267,7 @@ export class PointerEvents {
     }
 
     setupPointerObserver(scene) {
-        this.scene = scene
-        this.pointerObserverRef.current = this.scene.onPointerObservable.add((pointerInfo) => {
+        this.pointerObserverRef.current = scene.onPointerObservable.add((pointerInfo) => {
             // 1. POINTERDOWN Event
             if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
                 this.onPointerDown(pointerInfo)
@@ -276,7 +275,7 @@ export class PointerEvents {
             
             // 2. POINTERMOVE Event
             if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERMOVE) {
-                this.onPointerMove()
+                this.onPointerMove(scene)
             }
 
                   // 3. POINTERUP Event

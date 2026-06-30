@@ -142,25 +142,26 @@
     };
 
     // --- Helper: Rebuild all obstacle cube meshes ---
-    rebuildCubesMeshes = (scene) => {
+    rebuildCubesMeshes = (cubeMeshesRef, cubes, scene) => {
         // Clear old meshes
-        this.cubeMeshesRef.current.forEach((mesh) => mesh.dispose());
-        this.cubeMeshesRef.current.clear();
+        cubeMeshesRef.current.forEach((mesh) => mesh.dispose());
+        cubeMeshesRef.current.clear();
 
         const cubeMat = new BABYLON.StandardMaterial('cubeMat', scene);
         cubeMat.diffuseColor = new BABYLON.Color3(0.45, 0.5, 0.55); // modern charcoal slate
         cubeMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-        this.cubes.forEach((cube) => {
+        console.log(cubes)
+        cubes.forEach((cube) => {
             const box = BABYLON.MeshBuilder.CreateBox(`cube-${cube.id}`, { size: 1, height: 1 }, scene);
             box.position = new BABYLON.Vector3(cube.x, 0.5, cube.z);
             box.material = cubeMat;
-            this.cubeMeshesRef.current.set(cube.id, box);
+            cubeMeshesRef.current.set(cube.id, box);
         });
     };
 
     // --- Helper: Draw the 3D path line ---
-    drawPathLineInBabylon = (path) => {
+    drawPathLineInBabylon = (path, sceneRef) => {
       if (this.pathLineMeshRef.current) {
         this.pathLineMeshRef.current.dispose();
         this.pathLineMeshRef.current = null;
