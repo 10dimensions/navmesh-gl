@@ -151,7 +151,6 @@
         cubeMat.diffuseColor = new BABYLON.Color3(0.45, 0.5, 0.55); // modern charcoal slate
         cubeMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-        console.log(cubes)
         cubes.forEach((cube) => {
             const box = BABYLON.MeshBuilder.CreateBox(`cube-${cube.id}`, { size: 1, height: 1 }, scene);
             box.position = new BABYLON.Vector3(cube.x, 0.5, cube.z);

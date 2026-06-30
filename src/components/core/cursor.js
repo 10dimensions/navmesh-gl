@@ -56,38 +56,38 @@ export class PointerEvents {
             }
         }
 
-            // --- Handle DRAG Mode ---
-            if (currentStep === 'edit' && this.stateRef.current.editMode === 'drag') {
-                if (pickedMesh && pickedMesh.name.startsWith('cube-')) {
-                    const id = pickedMesh.name.substring(5);
-                    const cube = this.stateRef.current.cubes.find((c) => c.id === id);
-                    if (cube) {
-                        // Initiate continuous Dragging Mode
-                        this.dragRef.current = {
-                            isDragging: true,
-                            draggedCubeId: id,
-                            lastValidX: cube.x,
-                            lastValidZ: cube.z,
-                        };
+        // --- Handle DRAG Mode ---
+        if (currentStep === 'edit' && this.stateRef.current.editMode === 'drag') {
+            if (pickedMesh && pickedMesh.name.startsWith('cube-')) {
+                const id = pickedMesh.name.substring(5);
+                const cube = this.stateRef.current.cubes.find((c) => c.id === id);
+                if (cube) {
+                    // Initiate continuous Dragging Mode
+                    this.dragRef.current = {
+                        isDragging: true,
+                        draggedCubeId: id,
+                        lastValidX: cube.x,
+                        lastValidZ: cube.z,
+                    };
 
-                        // Temporarily disable camera control so user can drag without rotating camera
-                        if (this.cameraRef.current && this.canvasRef.current) {
-                            this.cameraRef.current.detachControl();
-                        }
-
-                        this.setNotification({ message: 'Dragging block smoothly. Release to place!', type: 'info' });
-                        return; // intercept event
+                    // Temporarily disable camera control so user can drag without rotating camera
+                    if (this.cameraRef.current && this.canvasRef.current) {
+                        this.cameraRef.current.detachControl();
                     }
+
+                    this.setNotification({ message: 'Dragging block smoothly. Release to place!', type: 'info' });
+                    return; // intercept event
                 }
             }
+        }
 
-            // If not dragging, handle single-click spawn or placements
-            if (!pt) return;
+        // If not dragging, handle single-click spawn or placements
+        if (!pt) return;
 
-            // Bounds constraint: coordinates range from -5 to 5
-            if (Math.abs(pt.x) > 5.5 || Math.abs(pt.z) > 5.5) return;
+        // Bounds constraint: coordinates range from -5 to 5
+        if (Math.abs(pt.x) > 5.5 || Math.abs(pt.z) > 5.5) return;
 
-            if (currentStep === 'edit') {
+        if (currentStep === 'edit') {
             if (this.stateRef.current.editMode === 'add') {
                 const exactX = Math.max(-5, Math.min(5, pt.x));
                 const exactZ = Math.max(-5, Math.min(5, pt.z));
@@ -118,12 +118,13 @@ export class PointerEvents {
                 };
                 this.setCubes((prev) => [...prev, newCube]);
             }
-            } else if (currentStep === 'simulate') {
+        } 
+        else if (currentStep === 'simulate') {
             const exactX = Math.max(-5.3, Math.min(5.3, pt.x));
             const exactZ = Math.max(-5.3, Math.min(5.3, pt.z));
 
             // Verify point is inside walkable area (not inside obstacle buffer zone)
-            const r = this. stateRef.current.navParams.walkableRadius;
+            const r = this.stateRef.current.navParams.walkableRadius;
             const isBlocked = this.stateRef.current.cubes.some(
                 (c) => Math.abs(c.x - exactX) < (0.5 + r) && Math.abs(c.z - exactZ) < (0.5 + r)
             );
@@ -174,7 +175,7 @@ export class PointerEvents {
             
     }
 
-    onPointerMove(){
+    onPointerMove(scene){
         if (this.dragRef.current.isDragging && this.dragRef.current.draggedCubeId) {
             const draggedCubeId = this.dragRef.current.draggedCubeId;
 
@@ -234,6 +235,34 @@ export class PointerEvents {
                     this.recomputePath();
                 } else if (this.stateRef.current.step === 'navmesh') {
                     this.navMesh.rebuildNavMesh(scene, navMeshGroupRef);
+                }
+            }
+        }
+
+        if (this.stateRef.current.step === 'simulate' && !this.stateRef.current.simState.isPlaying) {
+
+            const pickResult = scene.pick(scene.pointerX, scene.pointerY, (mesh) => mesh.name === 'ground1');
+
+            if (pickResult && pickResult.hit && pickResult.pickedPoint) {
+                const pt = pickResult.pickedPoint;
+                const exactX = Math.max(-5.3, Math.min(5.3, pt.x));
+                const exactZ = Math.max(-5.3, Math.min(5.3, pt.z));
+
+                // Verify point is inside walkable area (not inside obstacle buffer zone)
+                const r = this.stateRef.current.navParams.walkableRadius;
+                const isBlocked = this.stateRef.current.cubes.some(
+                    (c) => Math.abs(c.x - exactX) < (0.5 + r) && Math.abs(c.z - exactZ) < (0.5 + r)
+                );
+
+                if (isBlocked) {
+                    this.setNotification({ message: 'Cannot place inside the obstacle buffer zone!', type: 'warning' });
+                    return;
+                }
+
+                const newPos = { x: exactX, y: 0.1, z: exactZ };
+                this.setTargetPos(newPos);
+                if (this.targetMeshRef.current) {
+                    this.targetMeshRef.current.position = new BABYLON.Vector3(newPos.x, newPos.y, newPos.z);
                 }
             }
         }

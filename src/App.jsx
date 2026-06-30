@@ -8,7 +8,7 @@ import NavMeshSimulator from './components/NavMeshSimulator'
 function Landing({setStart}) {
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
-      <button className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-md hover:bg-blue-700 transition duration-200"
+      <button className="rounded-lg bg-black px-6 py-3 font-sans text-white shadow-md hover:bg-black transition duration-200"
         onClick={()=>setStart(true)}>
         Start
       </button>
