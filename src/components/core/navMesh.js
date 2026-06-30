@@ -1,74 +1,141 @@
-import * as BABYLON from 'babylonjs';
+import * as BABYLON from "babylonjs";
+import Recast from "recast-detour";
 
 export class NavMesh {
 
-    constructor(){
+    constructor() {
         this.navMeshState = {
             cs: 0.2,
             ch: 0.2,
             walkableSlopeAngle: 45,
             walkableHeight: 1.0,
             walkableClimb: 0.5,
-            walkableRadius: 0.4,
-        }
+            walkableRadius: 0.4
+        };
+
+        this.navigationPlugin = null;
+        this.debugMesh = null;
     }
 
     getNavMeshState() {
         return this.navMeshState
     }
 
-    init(scene) {
-        return new BABYLON.TransformNode('navMeshGroup', scene)
+    async init(scene) {
+
+        const recast = await Recast();
+
+        this.navigationPlugin =
+            new BABYLON.RecastJSPlugin(recast);
+
+        return new BABYLON.TransformNode(
+            "navMeshGroup",
+            scene
+        );
     }
 
     rebuildNavMesh = (scene, navMeshGroupRef, stateRef) => {
+
+        if (!this.navigationPlugin) return;
+
         this.clearNavMesh(navMeshGroupRef);
-    
-        if (!navMeshGroupRef.current) return;
-    
-        const navMat = new BABYLON.StandardMaterial('navMeshMat', scene);
-        navMat.diffuseColor = new BABYLON.Color3(0.06, 0.84, 0.65); // beautiful emerald cyan
-        navMat.alpha = 0.35; // clean transparent overlay
-        navMat.emissiveColor = new BABYLON.Color3(0.0, 0.2, 0.15);
-    
-        try {
-          // Create a base plate representing the full walkable grid area (11x11, from -5.5 to 5.5)
-          const basePlate = BABYLON.MeshBuilder.CreateBox('basePlate', { width: 11, height: 0.01, depth: 11 }, scene);
-          basePlate.position = new BABYLON.Vector3(0, 0, 0);
-    
-          let baseCSG = BABYLON.CSG.FromMesh(basePlate);
-          const tempMeshes = [basePlate];
-    
-          // Subtract each obstacle inflated by the agent walkableRadius
-          const r = stateRef.current.navParams.walkableRadius;
-          const size = 1 + 2 * r;
-    
-          stateRef.current.cubes.forEach((cube) => {
-            const obstacleBox = BABYLON.MeshBuilder.CreateBox(`temp-obs-${cube.id}`, { width: size, height: 1.5, depth: size }, scene);
-            obstacleBox.position = new BABYLON.Vector3(cube.x, 0.5, cube.z);
-            tempMeshes.push(obstacleBox);
-    
-            const obstacleCSG = BABYLON.CSG.FromMesh(obstacleBox);
-            baseCSG = baseCSG.subtract(obstacleCSG);
-          });
-    
-          // Render the subtraction result
-          const navMeshVisual = baseCSG.toMesh('navMeshVisual', navMat, scene);
-          navMeshVisual.position.y = 0.012; // slightly above ground to prevent z-fighting
-          navMeshVisual.parent = navMeshGroupRef.current;
-    
-          // Clean up temporary meshes
-          tempMeshes.forEach((mesh) => mesh.dispose());
-        } catch (e) {
-          console.error("Error generating CSG NavMesh:", e);
-        }
-      };
-    
+
+        //------------------------------------
+        // collect meshes
+        //------------------------------------
+
+        const meshes = [];
+
+        scene.meshes.forEach(mesh => {
+            if (
+                mesh.isEnabled() &&
+                mesh.isVisible &&
+                mesh !== this.debugMesh &&
+                mesh.name !== "navMeshDebug"
+            ) {
+                meshes.push(mesh);
+            }
+        });
+
+        //------------------------------------
+        // build navmesh
+        //------------------------------------
+
+        this.navigationPlugin.createNavMesh(
+            meshes,
+            {
+                cs: stateRef.current.navParams.cs,
+                ch: stateRef.current.navParams.ch,
+                walkableSlopeAngle:
+                    stateRef.current.navParams.walkableSlopeAngle,
+                walkableHeight:
+                    stateRef.current.navParams.walkableHeight,
+                walkableClimb:
+                    stateRef.current.navParams.walkableClimb,
+                walkableRadius:
+                    stateRef.current.navParams.walkableRadius,
+
+                maxEdgeLen: 12,
+                maxSimplificationError: 1.3,
+                minRegionArea: 8,
+                mergeRegionArea: 20,
+                maxVertsPerPoly: 6,
+                detailSampleDist: 6,
+                detailSampleMaxError: 1
+            }
+        );
+
+        //------------------------------------
+        // create debug mesh
+        //------------------------------------
+
+        this.debugMesh = this.navigationPlugin.createDebugNavMesh(scene);
+
+        const mat = new BABYLON.StandardMaterial("navmeshMaterial", scene);
+
+        mat.diffuseColor = new BABYLON.Color3(0.06, 0.84, 0.65);
+        mat.alpha = 0.35;
+        mat.emissiveColor = new BABYLON.Color3(0, 0.2, 0.15);
+
+        this.debugMesh.material = mat;
+        this.debugMesh.parent = navMeshGroupRef.current;
+    };
+
     clearNavMesh = (navMeshGroupRef) => {
+
+        if (this.debugMesh) {
+            this.debugMesh.dispose();
+            this.debugMesh = null;
+        }
+
         if (navMeshGroupRef.current) {
-          const children = navMeshGroupRef.current.getChildMeshes();
-          children.forEach((mesh) => mesh.dispose());
+            navMeshGroupRef.current
+                .getChildMeshes()
+                .forEach(m => m.dispose());
         }
     };
+
+    findPath(start, end) {
+        if (!this.navigationPlugin) return [];
+
+        return this.navigationPlugin.computePath(start, end);
+    }
+
+    getClosestPoint(position) {
+        if (!this.navigationPlugin) return position;
+
+        return this.navigationPlugin.getClosestPoint(
+            position
+        );
+    }
+
+    moveAlong(position, destination) {
+        if (!this.navigationPlugin) return destination;
+
+        return this.navigationPlugin.moveAlong(
+            position,
+            destination
+        );
+    }
 
 }
