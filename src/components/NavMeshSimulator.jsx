@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as BABYLON from 'babylonjs';
 
+import { findPathAStarCsg } from './core/pathfinder/pathfinderCsg.js';
 import { Pathfinder } from "./core/pathfinder/pathfinder.js"
 import { buildPortalGraph } from "./core/pathfinder/portalgraph.js";
+
 import { DEMO_LAYOUTS } from './core/demo.js';
 
 import Badge from "./ui/Badge.jsx"
@@ -102,8 +104,7 @@ export default function NavMeshSimulator() {
     const target = stateRef.current.targetPos;
     const currentCubes = stateRef.current.cubes;
     const r = stateRef.current.navParams.walkableRadius;
-    
-    //const computedPath = findPathAStar(start, target, currentCubes, r);
+
     const getNearestNode = (graph, position) => {
       let closest = null;
       let bestDistance = Infinity;
@@ -133,9 +134,8 @@ export default function NavMeshSimulator() {
 
     }
     
-
-
-    const computedPath = findPathAStar(start, target, currentCubes, r);
+    const computedPath = findPathAStarCsg(start, target, currentCubes, r);
+    //const computedPath = findPathAStar(start, target, currentCubes, r);
     
     setSimState(prev => ({
       ...prev,
