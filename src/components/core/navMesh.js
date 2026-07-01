@@ -1,8 +1,9 @@
 import * as BABYLON from "babylonjs";
-import Recast from "recast-detour";
+import { CreateNavigationPluginAsync } from "@babylonjs/addons";
+import * as RecastCore from "@recast-navigation/core";
+import * as RecastGenerators from "@recast-navigation/generators";
 
 export class NavMesh {
-
     constructor() {
         this.navMeshState = {
             cs: 0.2,
@@ -10,7 +11,14 @@ export class NavMesh {
             walkableSlopeAngle: 45,
             walkableHeight: 1.0,
             walkableClimb: 0.5,
-            walkableRadius: 0.4
+            walkableRadius: 0.4,
+            maxEdgeLen: 12,
+            maxSimplificationError: 1.3,
+            minRegionArea: 8,
+            mergeRegionArea: 20,
+            maxVertsPerPoly: 6,
+            detailSampleDist: 6,
+            detailSampleMaxError: 1
         };
 
         this.navigationPlugin = null;
@@ -18,124 +26,112 @@ export class NavMesh {
     }
 
     getNavMeshState() {
-        return this.navMeshState
+        return this.navMeshState;
     }
 
     async init(scene) {
-
-        const recast = await Recast();
-
+        await RecastCore.init();
         this.navigationPlugin =
-            new BABYLON.RecastJSPlugin(recast);
+            await CreateNavigationPluginAsync({
+                instance: {
+                    ...RecastCore,
+                    ...RecastGenerators
+                }
+            });
 
-        return new BABYLON.TransformNode(
-            "navMeshGroup",
-            scene
-        );
+        this.navigationPlugin.setDefaultQueryExtent(new BABYLON.Vector3(2, 4, 2));
+
+        return new BABYLON.TransformNode("navMeshGroup", scene);
     }
 
     rebuildNavMesh = (scene, navMeshGroupRef, stateRef) => {
-
         if (!this.navigationPlugin) return;
 
         this.clearNavMesh(navMeshGroupRef);
 
-        //------------------------------------
-        // collect meshes
-        //------------------------------------
+        /*
+            Use the actual Babylon geometry.
+            Ground + obstacles are passed to Recast.
+            No CSG subtraction.
+        */
 
-        const meshes = [];
+        const meshes = scene.meshes.filter(mesh => {
+                return (
+                    mesh.isEnabled() &&
+                    mesh.isVisible &&
+                    mesh.getTotalVertices() > 0 &&
+                    mesh !== this.debugMesh
 
-        scene.meshes.forEach(mesh => {
-            if (
-                mesh.isEnabled() &&
-                mesh.isVisible &&
-                mesh !== this.debugMesh &&
-                mesh.name !== "navMeshDebug"
-            ) {
-                meshes.push(mesh);
-            }
-        });
-
-        //------------------------------------
-        // build navmesh
-        //------------------------------------
+                );
+            });
 
         this.navigationPlugin.createNavMesh(
             meshes,
             {
-                cs: stateRef.current.navParams.cs,
-                ch: stateRef.current.navParams.ch,
-                walkableSlopeAngle:
-                    stateRef.current.navParams.walkableSlopeAngle,
-                walkableHeight:
-                    stateRef.current.navParams.walkableHeight,
-                walkableClimb:
-                    stateRef.current.navParams.walkableClimb,
-                walkableRadius:
-                    stateRef.current.navParams.walkableRadius,
-
-                maxEdgeLen: 12,
-                maxSimplificationError: 1.3,
-                minRegionArea: 8,
-                mergeRegionArea: 20,
-                maxVertsPerPoly: 6,
-                detailSampleDist: 6,
-                detailSampleMaxError: 1
+                ...this.navMeshState,
+                ...stateRef.current.navParams
             }
         );
 
-        //------------------------------------
-        // create debug mesh
-        //------------------------------------
-
         this.debugMesh = this.navigationPlugin.createDebugNavMesh(scene);
 
-        const mat = new BABYLON.StandardMaterial("navmeshMaterial", scene);
-
+        const mat = new BABYLON.StandardMaterial("navDebugMaterial", scene);
         mat.diffuseColor = new BABYLON.Color3(0.06, 0.84, 0.65);
         mat.alpha = 0.35;
         mat.emissiveColor = new BABYLON.Color3(0, 0.2, 0.15);
 
         this.debugMesh.material = mat;
+        this.debugMesh.position.y =0.02;
         this.debugMesh.parent = navMeshGroupRef.current;
     };
 
-    clearNavMesh = (navMeshGroupRef) => {
+    findPath(start, end) {
+        if (!this.navigationPlugin) return [];
+        return this.navigationPlugin.computePath(start, end);
+    }
 
+    findSmoothPath(start, end) {
+        if (!this.navigationPlugin) return [];
+        return this.navigationPlugin.computePathSmooth(start, end);
+    }
+
+    getClosestPoint(position) {
+        return this.navigationPlugin?.getClosestPoint(position)??position;
+    }
+
+    moveAlong(position, destination) {
+        return this.navigationPlugin?.moveAlong(position, destination)??position;
+    }
+
+    addObstacle(mesh) {
+        if (!this.navigationPlugin) return null;
+
+        const box = mesh.getBoundingInfo().boundingBox;
+
+        return this.navigationPlugin
+            .addBoxObstacle(
+                mesh.position,
+                box.extendSize.scale(2),
+                mesh.rotation.y
+            );
+    }
+
+    clearNavMesh(navMeshGroupRef) {
         if (this.debugMesh) {
             this.debugMesh.dispose();
             this.debugMesh = null;
         }
 
-        if (navMeshGroupRef.current) {
-            navMeshGroupRef.current
-                .getChildMeshes()
-                .forEach(m => m.dispose());
+        if (navMeshGroupRef.current && navMeshGroupRef.current.getChildMeshes) {
+            debugger
+            navMeshGroupRef.current.getChildMeshes().forEach(mesh =>mesh.dispose());
         }
-    };
-
-    findPath(start, end) {
-        if (!this.navigationPlugin) return [];
-
-        return this.navigationPlugin.computePath(start, end);
     }
 
-    getClosestPoint(position) {
-        if (!this.navigationPlugin) return position;
-
-        return this.navigationPlugin.getClosestPoint(
-            position
-        );
+    dispose() {
+        if (this.navigationPlugin) {
+            this.navigationPlugin.dispose();
+            this.navigationPlugin = null;
+        }
     }
-
-    moveAlong(position, destination) {
-        if (!this.navigationPlugin) return destination;
-
-        return this.navigationPlugin.moveAlong(
-            position,
-            destination
-        );
-    }
-
 }

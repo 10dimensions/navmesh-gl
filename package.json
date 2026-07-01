@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@babylonjs/addons": "^9.14.0",
     "@google/genai": "^2.4.0",
+    "@recast-navigation/core": "^0.43.1",
+    "@recast-navigation/generators": "^0.43.1",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "babylonjs": "^9.14.0",
@@ -22,7 +25,8 @@
     "motion": "^12.23.24",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "recast-detour": "^1.6.4"
+    "recast-detour": "^1.6.4",
+    "recast-navigation": "^0.43.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
