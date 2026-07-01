@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as BABYLON from 'babylonjs';
-import { findPathAStar, DEMO_LAYOUTS } from '../utils/pathfinding';
+
+import { Pathfinder } from "./core/pathfinder/pathfinder.js"
+import { buildPortalGraph } from "./core/pathfinder/portalgraph.js";
+import { DEMO_LAYOUTS } from './core/demo.js';
+
 import Badge from "./ui/Badge.jsx"
 import Header from "./ui/Header.jsx"
 import Footer from "./ui/Footer.jsx"
@@ -99,6 +103,38 @@ export default function NavMeshSimulator() {
     const currentCubes = stateRef.current.cubes;
     const r = stateRef.current.navParams.walkableRadius;
     
+    //const computedPath = findPathAStar(start, target, currentCubes, r);
+    const getNearestNode = (graph, position) => {
+      let closest = null;
+      let bestDistance = Infinity;
+
+      for(const id in graph.nodes){
+        const node = graph.nodes[id];
+        const distance = Math.hypot(node.position.x - position.x, node.position.z - position.z);
+
+        if(distance < bestDistance){
+          bestDistance = distance;
+          closest = node;
+        }
+      }
+      return closest;
+    }
+    const findPathAStar = (start, target, currentCubes, r) => {
+      
+      const graph = buildPortalGraph(cubes, r);
+      const pathfinder = new Pathfinder(graph);
+
+      const startNode = getNearestNode(graph, start);
+      const targetNode = getNearestNode(graph, target);
+
+      return pathfinder.findPath(startNode, targetNode)
+              .map(p=>({x:p.x, y:0.1, z:p.z})
+            );
+
+    }
+    
+
+
     const computedPath = findPathAStar(start, target, currentCubes, r);
     
     setSimState(prev => ({
