@@ -1,8 +1,10 @@
-import * as BABYLON from 'babylonjs';
+import * as BABYLON from "babylonjs";
+import { CreateNavigationPluginAsync } from "@babylonjs/addons";
+import * as RecastCore from "@recast-navigation/core";
+import * as RecastGenerators from "@recast-navigation/generators";
 
 export class NavMesh {
-
-    constructor(){
+    constructor() {
         this.navMeshState = {
             cs: 0.2,
             ch: 0.2,
@@ -10,65 +12,126 @@ export class NavMesh {
             walkableHeight: 1.0,
             walkableClimb: 0.5,
             walkableRadius: 0.4,
-        }
+            maxEdgeLen: 12,
+            maxSimplificationError: 1.3,
+            minRegionArea: 8,
+            mergeRegionArea: 20,
+            maxVertsPerPoly: 6,
+            detailSampleDist: 6,
+            detailSampleMaxError: 1
+        };
+
+        this.navigationPlugin = null;
+        this.debugMesh = null;
     }
 
     getNavMeshState() {
-        return this.navMeshState
+        return this.navMeshState;
     }
 
-    init(scene) {
-        return new BABYLON.TransformNode('navMeshGroup', scene)
+    async init(scene) {
+        await RecastCore.init();
+        this.navigationPlugin =
+            await CreateNavigationPluginAsync({
+                instance: {
+                    ...RecastCore,
+                    ...RecastGenerators
+                }
+            });
+
+        this.navigationPlugin.setDefaultQueryExtent(new BABYLON.Vector3(2, 4, 2));
+
+        return new BABYLON.TransformNode("navMeshGroup", scene);
     }
 
     rebuildNavMesh = (scene, navMeshGroupRef, stateRef) => {
+        if (!this.navigationPlugin) return;
+
         this.clearNavMesh(navMeshGroupRef);
-    
-        if (!navMeshGroupRef.current) return;
-    
-        const navMat = new BABYLON.StandardMaterial('navMeshMat', scene);
-        navMat.diffuseColor = new BABYLON.Color3(0.06, 0.84, 0.65); // beautiful emerald cyan
-        navMat.alpha = 0.35; // clean transparent overlay
-        navMat.emissiveColor = new BABYLON.Color3(0.0, 0.2, 0.15);
-    
-        try {
-          // Create a base plate representing the full walkable grid area (11x11, from -5.5 to 5.5)
-          const basePlate = BABYLON.MeshBuilder.CreateBox('basePlate', { width: 11, height: 0.01, depth: 11 }, scene);
-          basePlate.position = new BABYLON.Vector3(0, 0, 0);
-    
-          let baseCSG = BABYLON.CSG.FromMesh(basePlate);
-          const tempMeshes = [basePlate];
-    
-          // Subtract each obstacle inflated by the agent walkableRadius
-          const r = stateRef.current.navParams.walkableRadius;
-          const size = 1 + 2 * r;
-    
-          stateRef.current.cubes.forEach((cube) => {
-            const obstacleBox = BABYLON.MeshBuilder.CreateBox(`temp-obs-${cube.id}`, { width: size, height: 1.5, depth: size }, scene);
-            obstacleBox.position = new BABYLON.Vector3(cube.x, 0.5, cube.z);
-            tempMeshes.push(obstacleBox);
-    
-            const obstacleCSG = BABYLON.CSG.FromMesh(obstacleBox);
-            baseCSG = baseCSG.subtract(obstacleCSG);
-          });
-    
-          // Render the subtraction result
-          const navMeshVisual = baseCSG.toMesh('navMeshVisual', navMat, scene);
-          navMeshVisual.position.y = 0.012; // slightly above ground to prevent z-fighting
-          navMeshVisual.parent = navMeshGroupRef.current;
-    
-          // Clean up temporary meshes
-          tempMeshes.forEach((mesh) => mesh.dispose());
-        } catch (e) {
-          console.error("Error generating CSG NavMesh:", e);
-        }
-      };
-    
-    clearNavMesh = (navMeshGroupRef) => {
-        if (navMeshGroupRef.current) {
-          const children = navMeshGroupRef.current.getChildMeshes();
-          children.forEach((mesh) => mesh.dispose());
-        }
+
+        /*
+            Use the actual Babylon geometry.
+            Ground + obstacles are passed to Recast.
+            No CSG subtraction.
+        */
+
+        const meshes = scene.meshes.filter(mesh => {
+                return (
+                    mesh.isEnabled() &&
+                    mesh.isVisible &&
+                    mesh.getTotalVertices() > 0 &&
+                    mesh !== this.debugMesh
+
+                );
+            });
+
+        this.navigationPlugin.createNavMesh(
+            meshes,
+            {
+                ...this.navMeshState,
+                ...stateRef.current.navParams
+            }
+        );
+
+        this.debugMesh = this.navigationPlugin.createDebugNavMesh(scene);
+
+        const mat = new BABYLON.StandardMaterial("navDebugMaterial", scene);
+        mat.diffuseColor = new BABYLON.Color3(0.06, 0.84, 0.65);
+        mat.alpha = 0.35;
+        mat.emissiveColor = new BABYLON.Color3(0, 0.2, 0.15);
+
+        this.debugMesh.material = mat;
+        this.debugMesh.position.y =0.02;
+        this.debugMesh.parent = navMeshGroupRef.current;
     };
 
+    findPath(start, end) {
+        if (!this.navigationPlugin) return [];
+        return this.navigationPlugin.computePath(start, end);
+    }
+
+    findSmoothPath(start, end) {
+        if (!this.navigationPlugin) return [];
+        return this.navigationPlugin.computePathSmooth(start, end);
+    }
+
+    getClosestPoint(position) {
+        return this.navigationPlugin?.getClosestPoint(position)??position;
+    }
+
+    moveAlong(position, destination) {
+        return this.navigationPlugin?.moveAlong(position, destination)??position;
+    }
+
+    addObstacle(mesh) {
+        if (!this.navigationPlugin) return null;
+
+        const box = mesh.getBoundingInfo().boundingBox;
+
+        return this.navigationPlugin
+            .addBoxObstacle(
+                mesh.position,
+                box.extendSize.scale(2),
+                mesh.rotation.y
+            );
+    }
+
+    clearNavMesh(navMeshGroupRef) {
+        if (this.debugMesh) {
+            this.debugMesh.dispose();
+            this.debugMesh = null;
+        }
+
+        if (navMeshGroupRef.current && navMeshGroupRef.current.getChildMeshes) {
+            debugger
+            navMeshGroupRef.current.getChildMeshes().forEach(mesh =>mesh.dispose());
+        }
+    }
+
+    dispose() {
+        if (this.navigationPlugin) {
+            this.navigationPlugin.dispose();
+            this.navigationPlugin = null;
+        }
+    }
 }
