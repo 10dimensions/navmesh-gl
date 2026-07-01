@@ -1,4 +1,4 @@
-// Pathfinder.js
+import { funnel } from './funnel.js';
 
 export class Pathfinder {
 
@@ -13,7 +13,7 @@ export class Pathfinder {
 
     const portals = this.extractPortals(nodePath);
 
-    return this.funnel(startNode.position, targetNode.position, portals);
+    return funnel(startNode.position, targetNode.position, portals);
   }
 
   aStar(startId, goalId) {
@@ -110,14 +110,14 @@ export class Pathfinder {
     return portals;
   }
 
-  funnel(start,end,portals){
-    const result=[start];
+  // funnel(start,end,portals){
+  //   const result=[start];
 
-    for(const portal of portals){
-      result.push(portal.left);
-    }
+  //   for(const portal of portals){
+  //     result.push(portal.left);
+  //   }
 
-    result.push(end);
-    return result;
-  }
+  //   result.push(end);
+  //   return result;
+  // }
 }

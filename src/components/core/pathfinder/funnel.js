@@ -1,6 +1,6 @@
 // Pathfinder.js
 
-const funnel = (start, end, portals) => {
+export const funnel = (start, end, portals) => {
 
   if(portals.length === 0){
     return [start, end];
@@ -23,8 +23,8 @@ const funnel = (start, end, portals) => {
     const portalRight = portals[i].right;
 
     // tighten right side
-    if(this.triangleArea(apex, right, portalRight) <= 0) {
-        if(apex === right || this.triangleArea(apex, left, portalRight) > 0){
+    if(triangleArea(apex, right, portalRight) <= 0) {
+        if(apex === right || triangleArea(apex, left, portalRight) > 0){
             right = portalRight;
             rightIndex=i;
         }
@@ -45,8 +45,8 @@ const funnel = (start, end, portals) => {
     }
 
     // tighten left side
-    if(this.triangleArea(apex, left, portalLeft) >= 0) {
-      if(apex === left || this.triangleArea(apex, right, portalLeft) < 0) {
+    if(triangleArea(apex, left, portalLeft) >= 0) {
+      if(apex === left || triangleArea(apex, right, portalLeft) < 0) {
         left = portalLeft;
         leftIndex=i;
       }
