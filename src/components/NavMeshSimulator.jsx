@@ -10,7 +10,7 @@ import Steps from "./ui/Steps.jsx"
 import GridPainting from "./ui/GridPainting.jsx"
 import NavMeshWidget from "./ui/NavMeshWidget.jsx" 
 
-import { NavMesh } from "./core/navMesh.js"
+import { NavMesh } from "./core/navMeshCsg.js"
 import { PointerEvents } from "./core/cursor.js"
 import { SceneControl } from "./core/sceneControl.js" 
 import { SimControl } from './core/simControl.js';
