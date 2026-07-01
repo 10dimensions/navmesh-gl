@@ -9,6 +9,15 @@ A small React + Vite proof-of-concept for interactive navmesh simulation and A* 
 - NavMesh visualization: Babylon.js meshes and Babylon.CSG to carve walkable space from a base ground plane.
 - Pathfinding: custom A* over a dense grid of world-space samples, with line-of-sight smoothing.
 
+## Core navmesh implementations
+
+The project currently contains two navmesh implementations under the core folder:
+
+- `src/components/core/navMeshCsg.js` is the active implementation used by the simulator.
+- `src/components/core/navMeshPolygonal.js` is a polygonal-navmesh prototype that is currently not used because it is still running into issues.
+
+The simulator imports and runs the CSG-based logic, while the polygonal version remains available as a reference or future work target.
+
 ## NavMesh generation strategy
 
 The current implementation does not build a traditional polygonal navigation mesh from scratch. Instead, it:
